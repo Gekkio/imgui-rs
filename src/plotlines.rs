@@ -1,16 +1,16 @@
 use sys;
-use std::{f32, mem, ptr};
+use std::{f32, mem};
 use std::marker::PhantomData;
 use std::os::raw::c_float;
 
-use super::{ImStr, ImVec2, Ui};
+use super::{ImVec2, Ui};
 
 #[must_use]
 pub struct PlotLines<'ui, 'p> {
-    label: &'p ImStr,
+    label: &'p str,
     values: &'p [f32],
     values_offset: usize,
-    overlay_text: Option<&'p ImStr>,
+    overlay_text: Option<&'p str>,
     scale_min: f32,
     scale_max: f32,
     graph_size: ImVec2,
@@ -18,7 +18,7 @@ pub struct PlotLines<'ui, 'p> {
 }
 
 impl<'ui, 'p> PlotLines<'ui, 'p> {
-    pub fn new(_: &Ui<'ui>, label: &'p ImStr, values: &'p [f32]) -> Self {
+    pub fn new(_: &Ui<'ui>, label: &'p str, values: &'p [f32]) -> Self {
         PlotLines {
             label: label,
             values: values,
@@ -38,7 +38,7 @@ impl<'ui, 'p> PlotLines<'ui, 'p> {
     }
 
     #[inline]
-    pub fn overlay_text(mut self, overlay_text: &'p ImStr) -> Self {
+    pub fn overlay_text(mut self, overlay_text: &'p str) -> Self {
         self.overlay_text = Some(overlay_text);
         self
     }
@@ -64,11 +64,11 @@ impl<'ui, 'p> PlotLines<'ui, 'p> {
     pub fn build(self) {
         unsafe {
             sys::igPlotLines(
-                self.label.as_ptr(),
+                sys::ImStr::from(self.label),
                 self.values.as_ptr() as *const c_float,
                 self.values.len() as i32,
                 self.values_offset as i32,
-                self.overlay_text.map(|x| x.as_ptr()).unwrap_or(ptr::null()),
+                self.overlay_text.map(|x| sys::ImStr::from(x)).unwrap_or(sys::ImStr::null()),
                 self.scale_min,
                 self.scale_max,
                 self.graph_size,

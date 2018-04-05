@@ -2,7 +2,7 @@ use sys;
 use std::marker::PhantomData;
 use std::ptr;
 
-use super::{ImGuiInputTextFlags, ImStr, ImString, Ui};
+use super::{ImGuiInputTextFlags, ImString, Ui};
 
 macro_rules! impl_text_flags {
     ($InputType:ident) => {
@@ -120,14 +120,14 @@ macro_rules! impl_precision_params {
 
 #[must_use]
 pub struct InputText<'ui, 'p> {
-    label: &'p ImStr,
+    label: &'p str,
     buf: &'p mut ImString,
     flags: ImGuiInputTextFlags,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
 impl<'ui, 'p> InputText<'ui, 'p> {
-    pub fn new(_: &Ui<'ui>, label: &'p ImStr, buf: &'p mut ImString) -> Self {
+    pub fn new(_: &Ui<'ui>, label: &'p str, buf: &'p mut ImString) -> Self {
         InputText {
             label: label,
             buf: buf,
@@ -144,7 +144,7 @@ impl<'ui, 'p> InputText<'ui, 'p> {
     pub fn build(self) -> bool {
         unsafe {
             sys::igInputText(
-                self.label.as_ptr(),
+                sys::ImStr::from(self.label),
                 self.buf.as_mut_ptr(),
                 self.buf.capacity_with_nul(),
                 self.flags,
@@ -157,7 +157,7 @@ impl<'ui, 'p> InputText<'ui, 'p> {
 
 #[must_use]
 pub struct InputInt<'ui, 'p> {
-    label: &'p ImStr,
+    label: &'p str,
     value: &'p mut i32,
     step: i32,
     step_fast: i32,
@@ -166,7 +166,7 @@ pub struct InputInt<'ui, 'p> {
 }
 
 impl<'ui, 'p> InputInt<'ui, 'p> {
-    pub fn new(_: &Ui<'ui>, label: &'p ImStr, value: &'p mut i32) -> Self {
+    pub fn new(_: &Ui<'ui>, label: &'p str, value: &'p mut i32) -> Self {
         InputInt {
             label: label,
             value: value,
@@ -180,7 +180,7 @@ impl<'ui, 'p> InputInt<'ui, 'p> {
     pub fn build(self) -> bool {
         unsafe {
             sys::igInputInt(
-                self.label.as_ptr(),
+                sys::ImStr::from(self.label),
                 self.value as *mut i32,
                 self.step,
                 self.step_fast,
@@ -195,7 +195,7 @@ impl<'ui, 'p> InputInt<'ui, 'p> {
 
 #[must_use]
 pub struct InputFloat<'ui, 'p> {
-    label: &'p ImStr,
+    label: &'p str,
     value: &'p mut f32,
     step: f32,
     step_fast: f32,
@@ -205,7 +205,7 @@ pub struct InputFloat<'ui, 'p> {
 }
 
 impl<'ui, 'p> InputFloat<'ui, 'p> {
-    pub fn new(_: &Ui<'ui>, label: &'p ImStr, value: &'p mut f32) -> Self {
+    pub fn new(_: &Ui<'ui>, label: &'p str, value: &'p mut f32) -> Self {
         InputFloat {
             label: label,
             value: value,
@@ -220,7 +220,7 @@ impl<'ui, 'p> InputFloat<'ui, 'p> {
     pub fn build(self) -> bool {
         unsafe {
             sys::igInputFloat(
-                self.label.as_ptr(),
+                sys::ImStr::from(self.label),
                 self.value as *mut f32,
                 self.step,
                 self.step_fast,
@@ -239,7 +239,7 @@ macro_rules! impl_input_floatn {
     ($InputFloatN:ident, $N:expr, $igInputFloatN:ident) => {
         #[must_use]
         pub struct $InputFloatN<'ui, 'p> {
-            label: &'p ImStr,
+            label: &'p str,
             value: &'p mut [f32;$N],
             decimal_precision: i32,
             flags: ImGuiInputTextFlags,
@@ -247,7 +247,7 @@ macro_rules! impl_input_floatn {
         }
 
         impl<'ui, 'p> $InputFloatN<'ui, 'p> {
-            pub fn new(_: &Ui<'ui>, label: &'p ImStr, value: &'p mut [f32;$N]) -> Self {
+            pub fn new(_: &Ui<'ui>, label: &'p str, value: &'p mut [f32;$N]) -> Self {
                 $InputFloatN {
                     label: label,
                     value: value,
@@ -260,7 +260,7 @@ macro_rules! impl_input_floatn {
             pub fn build(self) -> bool {
                 unsafe {
                     sys::$igInputFloatN(
-                        self.label.as_ptr(),
+                        sys::ImStr::from(self.label),
                         self.value.as_mut_ptr(),
                         self.decimal_precision,
                         self.flags)
@@ -281,14 +281,14 @@ macro_rules! impl_input_intn {
     ($InputIntN:ident, $N:expr, $igInputIntN:ident) => {
         #[must_use]
         pub struct $InputIntN<'ui, 'p> {
-            label: &'p ImStr,
+            label: &'p str,
             value: &'p mut [i32;$N],
             flags: ImGuiInputTextFlags,
             _phantom: PhantomData<&'ui Ui<'ui>>
         }
 
         impl<'ui, 'p> $InputIntN<'ui, 'p> {
-            pub fn new(_: &Ui<'ui>, label: &'p ImStr, value: &'p mut [i32;$N]) -> Self {
+            pub fn new(_: &Ui<'ui>, label: &'p str, value: &'p mut [i32;$N]) -> Self {
                 $InputIntN {
                     label: label,
                     value: value,
@@ -300,7 +300,7 @@ macro_rules! impl_input_intn {
             pub fn build(self) -> bool {
                 unsafe {
                     sys::$igInputIntN(
-                        self.label.as_ptr(),
+                        sys::ImStr::from(self.label),
                         self.value.as_mut_ptr(),
                         self.flags)
                 }

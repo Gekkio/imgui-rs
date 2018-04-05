@@ -3,7 +3,7 @@ use sys;
 use std::marker::PhantomData;
 use std::ptr;
 
-use {ImGuiColorEditFlags, ImStr, ImVec2, ImVec4, Ui};
+use {ImGuiColorEditFlags, ImVec2, ImVec4, Ui};
 
 /// Mutable reference to an editable color value.
 #[derive(Debug)]
@@ -75,7 +75,7 @@ pub enum ColorPreview {
 /// Builder for a color editor widget.
 #[must_use]
 pub struct ColorEdit<'ui, 'p> {
-    label: &'p ImStr,
+    label: &'p str,
     value: EditableColor<'p>,
     flags: ImGuiColorEditFlags,
     _phantom: PhantomData<&'ui Ui<'ui>>,
@@ -83,7 +83,7 @@ pub struct ColorEdit<'ui, 'p> {
 
 impl<'ui, 'p> ColorEdit<'ui, 'p> {
     /// Constructs a new color editor builder.
-    pub fn new(_: &Ui<'ui>, label: &'p ImStr, value: EditableColor<'p>) -> Self {
+    pub fn new(_: &Ui<'ui>, label: &'p str, value: EditableColor<'p>) -> Self {
         ColorEdit {
             label,
             value,
@@ -202,10 +202,10 @@ impl<'ui, 'p> ColorEdit<'ui, 'p> {
     pub fn build(self) -> bool {
         match self.value {
             EditableColor::Float3(value) => unsafe {
-                sys::igColorEdit3(self.label.as_ptr(), value.as_mut_ptr(), self.flags)
+                sys::igColorEdit3(sys::ImStr::from(self.label), value.as_mut_ptr(), self.flags)
             },
             EditableColor::Float4(value) => unsafe {
-                sys::igColorEdit4(self.label.as_ptr(), value.as_mut_ptr(), self.flags)
+                sys::igColorEdit4(sys::ImStr::from(self.label), value.as_mut_ptr(), self.flags)
             },
         }
     }
@@ -214,7 +214,7 @@ impl<'ui, 'p> ColorEdit<'ui, 'p> {
 /// Builder for a color picker widget.
 #[must_use]
 pub struct ColorPicker<'ui, 'p> {
-    label: &'p ImStr,
+    label: &'p str,
     value: EditableColor<'p>,
     flags: ImGuiColorEditFlags,
     ref_color: Option<&'p [f32; 4]>,
@@ -223,7 +223,7 @@ pub struct ColorPicker<'ui, 'p> {
 
 impl<'ui, 'p> ColorPicker<'ui, 'p> {
     /// Constructs a new color picker builder.
-    pub fn new(_: &Ui<'ui>, label: &'p ImStr, value: EditableColor<'p>) -> Self {
+    pub fn new(_: &Ui<'ui>, label: &'p str, value: EditableColor<'p>) -> Self {
         ColorPicker {
             label,
             value,
@@ -352,7 +352,7 @@ impl<'ui, 'p> ColorPicker<'ui, 'p> {
         let ref_color = self.ref_color.map(|c| c.as_ptr()).unwrap_or(ptr::null());
         unsafe {
             sys::igColorPicker4(
-                self.label.as_ptr(),
+                sys::ImStr::from(self.label),
                 self.value.as_mut_ptr(),
                 self.flags,
                 ref_color,
@@ -364,7 +364,7 @@ impl<'ui, 'p> ColorPicker<'ui, 'p> {
 /// Builder for a color button widget.
 #[must_use]
 pub struct ColorButton<'ui, 'p> {
-    desc_id: &'p ImStr,
+    desc_id: &'p str,
     color: ImVec4,
     flags: ImGuiColorEditFlags,
     size: ImVec2,
@@ -373,7 +373,7 @@ pub struct ColorButton<'ui, 'p> {
 
 impl<'ui, 'p> ColorButton<'ui, 'p> {
     /// Constructs a new color button builder.
-    pub fn new(_: &Ui<'ui>, desc_id: &'p ImStr, color: ImVec4) -> Self {
+    pub fn new(_: &Ui<'ui>, desc_id: &'p str, color: ImVec4) -> Self {
         ColorButton {
             desc_id,
             color,
@@ -423,6 +423,6 @@ impl<'ui, 'p> ColorButton<'ui, 'p> {
     }
     /// Builds the color button.
     pub fn build(self) -> bool {
-        unsafe { sys::igColorButton(self.desc_id.as_ptr(), self.color, self.flags, self.size) }
+        unsafe { sys::igColorButton(sys::ImStr::from(self.desc_id), self.color, self.flags, self.size) }
     }
 }

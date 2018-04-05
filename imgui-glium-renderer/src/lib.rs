@@ -4,8 +4,8 @@ extern crate imgui;
 
 use glium::{DrawError, GlObject, IndexBuffer, Program, Surface, Texture2d, VertexBuffer};
 use glium::backend::{Context, Facade};
-use glium::program;
 use glium::index::{self, PrimitiveType};
+use glium::program;
 use glium::texture;
 use glium::vertex;
 use imgui::{DrawList, ImDrawIdx, ImDrawVert, ImGui, Ui};

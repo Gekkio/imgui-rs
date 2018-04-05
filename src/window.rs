@@ -2,7 +2,7 @@ use sys;
 use std::marker::PhantomData;
 use std::ptr;
 
-use super::{ImGuiCond, ImGuiWindowFlags, ImStr, ImVec2, Ui};
+use super::{ImGuiCond, ImGuiWindowFlags, ImVec2, Ui};
 
 #[must_use]
 pub struct Window<'ui, 'p> {
@@ -10,14 +10,14 @@ pub struct Window<'ui, 'p> {
     pos_cond: ImGuiCond,
     size: (f32, f32),
     size_cond: ImGuiCond,
-    name: &'p ImStr,
+    name: &'p str,
     opened: Option<&'p mut bool>,
     flags: ImGuiWindowFlags,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
 impl<'ui, 'p> Window<'ui, 'p> {
-    pub fn new(_: &Ui<'ui>, name: &'p ImStr) -> Window<'ui, 'p> {
+    pub fn new(_: &Ui<'ui>, name: &'p str) -> Window<'ui, 'p> {
         Window {
             pos: (0.0, 0.0),
             pos_cond: ImGuiCond::empty(),
@@ -157,7 +157,7 @@ impl<'ui, 'p> Window<'ui, 'p> {
                 sys::igSetNextWindowSize(self.size.into(), self.size_cond);
             }
             sys::igBegin(
-                self.name.as_ptr(),
+                sys::ImStr::from(self.name),
                 self.opened.map(|x| x as *mut bool).unwrap_or(
                     ptr::null_mut(),
                 ),

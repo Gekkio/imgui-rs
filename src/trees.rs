@@ -1,19 +1,19 @@
 use sys;
 use std::marker::PhantomData;
 
-use super::{ImGuiCond, ImGuiTreeNodeFlags, ImStr, Ui};
+use super::{ImGuiCond, ImGuiTreeNodeFlags, Ui};
 
 #[must_use]
 pub struct TreeNode<'ui, 'p> {
-    id: &'p ImStr,
-    label: Option<&'p ImStr>,
+    id: &'p str,
+    label: Option<&'p str>,
     opened: bool,
     opened_cond: ImGuiCond,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
 impl<'ui, 'p> TreeNode<'ui, 'p> {
-    pub fn new(_: &Ui<'ui>, id: &'p ImStr) -> Self {
+    pub fn new(_: &Ui<'ui>, id: &'p str) -> Self {
         TreeNode {
             id: id,
             label: None,
@@ -23,7 +23,7 @@ impl<'ui, 'p> TreeNode<'ui, 'p> {
         }
     }
     #[inline]
-    pub fn label(mut self, label: &'p ImStr) -> Self {
+    pub fn label(mut self, label: &'p str) -> Self {
         self.label = Some(label);
         self
     }
@@ -38,11 +38,13 @@ impl<'ui, 'p> TreeNode<'ui, 'p> {
             if !self.opened_cond.is_empty() {
                 sys::igSetNextTreeNodeOpen(self.opened, self.opened_cond);
             }
-            sys::igTreeNodeStr(
-                self.id.as_ptr(),
-                super::fmt_ptr(),
-                self.label.unwrap_or(self.id).as_ptr(),
-            )
+            match self.label {
+                Some(label) => sys::igTreeNodeStr1(
+                    sys::ImStr::from(self.id),
+                    sys::ImStr::from(label),
+                ),
+                None => sys::igTreeNode(sys::ImStr::from(self.id)),
+            }
         };
         if render {
             f();
@@ -53,7 +55,7 @@ impl<'ui, 'p> TreeNode<'ui, 'p> {
 
 #[must_use]
 pub struct CollapsingHeader<'ui, 'p> {
-    label: &'p ImStr,
+    label: &'p str,
     // Some flags are automatically set in ImGui::CollapsingHeader, so
     // we only support a sensible subset here
     flags: ImGuiTreeNodeFlags,
@@ -61,7 +63,7 @@ pub struct CollapsingHeader<'ui, 'p> {
 }
 
 impl<'ui, 'p> CollapsingHeader<'ui, 'p> {
-    pub fn new(_: &Ui<'ui>, label: &'p ImStr) -> Self {
+    pub fn new(_: &Ui<'ui>, label: &'p str) -> Self {
         CollapsingHeader {
             label: label,
             flags: ImGuiTreeNodeFlags::empty(),
@@ -104,6 +106,6 @@ impl<'ui, 'p> CollapsingHeader<'ui, 'p> {
         self
     }
     pub fn build(self) -> bool {
-        unsafe { sys::igCollapsingHeader(self.label.as_ptr(), self.flags) }
+        unsafe { sys::igCollapsingHeader(sys::ImStr::from(self.label), self.flags) }
     }
 }

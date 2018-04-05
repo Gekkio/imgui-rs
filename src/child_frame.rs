@@ -1,18 +1,18 @@
 use sys;
 use std::marker::PhantomData;
 
-use super::{ImStr, ImVec2, ImGuiWindowFlags, Ui};
+use super::{ImVec2, ImGuiWindowFlags, Ui};
 
 #[must_use]
 pub struct ChildFrame<'ui, 'p> {
-    name: &'p ImStr,
+    name: &'p str,
     size: ImVec2,
     flags: ImGuiWindowFlags,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
 impl<'ui, 'p> ChildFrame<'ui, 'p> {
-    pub fn new<S: Into<ImVec2>>(_: &Ui<'ui>, name: &'p ImStr, size: S) -> ChildFrame<'ui, 'p> {
+    pub fn new<S: Into<ImVec2>>(_: &Ui<'ui>, name: &'p str, size: S) -> ChildFrame<'ui, 'p> {
         ChildFrame {
             name: name,
             size: size.into(),
@@ -108,7 +108,7 @@ impl<'ui, 'p> ChildFrame<'ui, 'p> {
         let show_border = false;
 
         let render_child_frame =
-            unsafe { sys::igBeginChild(self.name.as_ptr(), self.size, show_border, self.flags) };
+            unsafe { sys::igBeginChild(sys::ImStr::from(self.name), self.size, show_border, self.flags) };
         if render_child_frame {
             f();
         }

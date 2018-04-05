@@ -2,17 +2,17 @@ use sys;
 use std::marker::PhantomData;
 use std::ptr;
 
-use super::{ImStr, Ui};
+use super::Ui;
 
 #[must_use]
 pub struct Menu<'ui, 'p> {
-    label: &'p ImStr,
+    label: &'p str,
     enabled: bool,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
 impl<'ui, 'p> Menu<'ui, 'p> {
-    pub fn new(_: &Ui<'ui>, label: &'p ImStr) -> Self {
+    pub fn new(_: &Ui<'ui>, label: &'p str) -> Self {
         Menu {
             label: label,
             enabled: true,
@@ -25,7 +25,7 @@ impl<'ui, 'p> Menu<'ui, 'p> {
         self
     }
     pub fn build<F: FnOnce()>(self, f: F) {
-        let render = unsafe { sys::igBeginMenu(self.label.as_ptr(), self.enabled) };
+        let render = unsafe { sys::igBeginMenu(sys::ImStr::from(self.label), self.enabled) };
         if render {
             f();
             unsafe { sys::igEndMenu() };
@@ -35,15 +35,15 @@ impl<'ui, 'p> Menu<'ui, 'p> {
 
 #[must_use]
 pub struct MenuItem<'ui, 'p> {
-    label: &'p ImStr,
-    shortcut: Option<&'p ImStr>,
+    label: &'p str,
+    shortcut: Option<&'p str>,
     selected: Option<&'p mut bool>,
     enabled: bool,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
 impl<'ui, 'p> MenuItem<'ui, 'p> {
-    pub fn new(_: &Ui<'ui>, label: &'p ImStr) -> Self {
+    pub fn new(_: &Ui<'ui>, label: &'p str) -> Self {
         MenuItem {
             label: label,
             shortcut: None,
@@ -53,7 +53,7 @@ impl<'ui, 'p> MenuItem<'ui, 'p> {
         }
     }
     #[inline]
-    pub fn shortcut(mut self, shortcut: &'p ImStr) -> Self {
+    pub fn shortcut(mut self, shortcut: &'p str) -> Self {
         self.shortcut = Some(shortcut);
         self
     }
@@ -68,8 +68,8 @@ impl<'ui, 'p> MenuItem<'ui, 'p> {
         self
     }
     pub fn build(self) -> bool {
-        let label = self.label.as_ptr();
-        let shortcut = self.shortcut.map(|x| x.as_ptr()).unwrap_or(ptr::null());
+        let label = sys::ImStr::from(self.label);
+        let shortcut = self.shortcut.map(|x| sys::ImStr::from(x)).unwrap_or(sys::ImStr::null());
         let selected = self.selected.map(|x| x as *mut bool).unwrap_or(
             ptr::null_mut(),
         );

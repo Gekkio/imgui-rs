@@ -1,16 +1,15 @@
 #![warn(missing_docs)]
 use sys;
 use std::marker::PhantomData;
-use std::ptr;
 
-use super::{ImStr, ImVec2, Ui};
+use super::{ImVec2, Ui};
 
 /// Progress bar widget.
 #[must_use]
 pub struct ProgressBar<'ui, 'p> {
     fraction: f32,
     size: ImVec2,
-    overlay_text: Option<&'p ImStr>,
+    overlay_text: Option<&'p str>,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
@@ -31,7 +30,7 @@ impl<'ui, 'p> ProgressBar<'ui, 'p> {
 
     /// Sets an optional text that will be drawn over the progress bar.
     #[inline]
-    pub fn overlay_text(mut self, overlay_text: &'p ImStr) -> Self {
+    pub fn overlay_text(mut self, overlay_text: &'p str) -> Self {
         self.overlay_text = Some(overlay_text);
         self
     }
@@ -52,7 +51,7 @@ impl<'ui, 'p> ProgressBar<'ui, 'p> {
             sys::igProgressBar(
                 self.fraction,
                 &self.size,
-                self.overlay_text.map(|x| x.as_ptr()).unwrap_or(ptr::null()),
+                self.overlay_text.map(|x| sys::ImStr::from(x)).unwrap_or(sys::ImStr::null()),
             );
         }
     }

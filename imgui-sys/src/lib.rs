@@ -11,8 +11,10 @@ extern crate gfx;
 extern crate glium;
 
 use std::convert::From;
+use std::marker::PhantomData;
 use std::mem;
 use std::os::raw::{c_char, c_float, c_int, c_short, c_uchar, c_uint, c_ushort, c_void};
+use std::ptr;
 use std::slice;
 
 #[cfg(feature = "gfx")]
@@ -328,8 +330,9 @@ pub type ImGuiTextEditCallback = Option<
     extern "C" fn(data: *mut ImGuiTextEditCallbackData) -> c_int,
 >;
 
-pub type ImGuiSizeConstraintCallback =
-    Option<extern "C" fn(data: *mut ImGuiSizeConstraintCallbackData)>;
+pub type ImGuiSizeConstraintCallback = Option<
+    extern "C" fn(data: *mut ImGuiSizeConstraintCallbackData),
+>;
 
 /// A tuple of 2 floating-point values
 #[repr(C)]
@@ -416,6 +419,35 @@ impl Into<(f32, f32, f32, f32)> for ImVec4 {
 }
 
 /// Runtime data for styling/colors
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+/// String slice for use with ig* functions
+pub struct ImStr<'p> {
+    pub begin: *const c_char,
+    pub end: *const c_char,
+    phantom: PhantomData<&'p str>
+}
+
+impl<'p> ImStr<'p> {
+    pub fn null() -> ImStr<'p> {
+        ImStr {
+            begin: ptr::null(),
+            end: ptr::null(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'p> From<&'p str> for ImStr<'p> {
+    fn from(s: &'p str) -> ImStr<'p> {
+        ImStr {
+            begin: s.as_ptr() as *const c_char,
+            end: unsafe { s.as_ptr().offset(s.len() as isize) as *const c_char },
+            phantom: PhantomData,
+        }
+    }
+}
+
 #[repr(C)]
 pub struct ImGuiStyle {
     /// Global alpha applies to everything in ImGui
@@ -822,10 +854,10 @@ extern "C" {
 
 // Window
 extern "C" {
-    pub fn igBegin(name: *const c_char, open: *mut bool, flags: ImGuiWindowFlags) -> bool;
+    pub fn igBegin(name: ImStr, open: *mut bool, flags: ImGuiWindowFlags) -> bool;
     pub fn igEnd();
     pub fn igBeginChild(
-        str_id: *const c_char,
+        str_id: ImStr,
         size: ImVec2,
         border: bool,
         extra_flags: ImGuiWindowFlags,
@@ -868,10 +900,10 @@ extern "C" {
     pub fn igSetWindowSize(size: ImVec2, cond: ImGuiCond);
     pub fn igSetWindowCollapsed(collapsed: bool, cond: ImGuiCond);
     pub fn igSetWindowFocus();
-    pub fn igSetWindowPosByName(name: *const c_char, pos: ImVec2, cond: ImGuiCond);
-    pub fn igSetWindowSize2(name: *const c_char, size: ImVec2, cond: ImGuiCond);
-    pub fn igSetWindowCollapsed2(name: *const c_char, collapsed: bool, cond: ImGuiCond);
-    pub fn igSetWindowFocus2(name: *const c_char);
+    pub fn igSetWindowPosByName(name: ImStr, pos: ImVec2, cond: ImGuiCond);
+    pub fn igSetWindowSize2(name: ImStr, size: ImVec2, cond: ImGuiCond);
+    pub fn igSetWindowCollapsed2(name: ImStr, collapsed: bool, cond: ImGuiCond);
+    pub fn igSetWindowFocus2(name: ImStr);
 
     pub fn igGetScrollX() -> c_float;
     pub fn igGetScrollY() -> c_float;
@@ -959,7 +991,7 @@ pub unsafe fn igAlignFirstTextHeightToWidgets() { igAlignTextToFramePadding(); }
 
 // Columns
 extern "C" {
-    pub fn igColumns(count: c_int, id: *const c_char, border: bool);
+    pub fn igColumns(count: c_int, id: ImStr, border: bool);
     pub fn igNextColumn();
     pub fn igGetColumnIndex() -> c_int;
     pub fn igGetColumnWidth(column_index: c_int) -> c_float;
@@ -971,12 +1003,12 @@ extern "C" {
 
 // ID scopes
 extern "C" {
-    pub fn igPushIDStr(str_id: *const c_char);
+    pub fn igPushIDStr(str_id: ImStr);
     pub fn igPushIDStrRange(str_begin: *const c_char, str_end: *const c_char);
     pub fn igPushIDPtr(ptr_id: *const c_void);
     pub fn igPushIDInt(int_id: c_int);
     pub fn igPopID();
-    pub fn igGetIDStr(str_id: *const c_char) -> ImGuiID;
+    pub fn igGetIDStr(str_id: ImStr) -> ImGuiID;
     pub fn igGetIDStrRange(str_begin: *const c_char, str_end: *const c_char) -> ImGuiID;
     pub fn igGetIDPtr(ptr_id: *const c_void) -> ImGuiID;
 }
@@ -984,22 +1016,29 @@ extern "C" {
 // Widgets
 extern "C" {
     pub fn igTextUnformatted(text: *const c_char, text_end: *const c_char);
+    pub fn igTextUnformatted1(text: ImStr);
     pub fn igText(fmt: *const c_char, ...);
     // pub fn igTextV(fmt: *const c_char, args: va_list);
+    pub fn igText1(text: ImStr);
     pub fn igTextColored(col: ImVec4, fmt: *const c_char, ...);
     // pub fn igTextColoredV(col: ImVec4, fmt: *const c_char, args: va_list);
+    pub fn igTextColored1(col: ImVec4, text: ImStr);
     pub fn igTextDisabled(fmt: *const c_char, ...);
     // pub fn igTextDisabledV(fmt: *const c_char, args: va_list);
+    pub fn igTextDisabled1(text: ImStr);
     pub fn igTextWrapped(fmt: *const c_char, ...);
+    pub fn igTextWrapped1(text: ImStr);
     // pub fn igTextWrappedV(fmt: *const c_char, args: va_list);
-    pub fn igLabelText(label: *const c_char, fmt: *const c_char, ...);
+    pub fn igLabelText(label: ImStr, fmt: *const c_char, ...);
+    pub fn igLabelText1(label: ImStr, value: ImStr);
     // pub fn igLabelTextV(label: *const c_char, fmt: *const c_char, args: va_list);
     pub fn igBulletText(fmt: *const c_char, ...);
+    pub fn igBulletText1(text: ImStr);
     // pub fn igBulletTextV(fmt: *const c_char, args: va_list);
     pub fn igBullet();
-    pub fn igButton(label: *const c_char, size: ImVec2) -> bool;
-    pub fn igSmallButton(label: *const c_char) -> bool;
-    pub fn igInvisibleButton(str_id: *const c_char, size: ImVec2) -> bool;
+    pub fn igButton(label: ImStr, size: ImVec2) -> bool;
+    pub fn igSmallButton(label: ImStr) -> bool;
+    pub fn igInvisibleButton(str_id: ImStr, size: ImVec2) -> bool;
     pub fn igImage(
         user_texture_id: ImTextureID,
         size: ImVec2,
@@ -1017,104 +1056,104 @@ extern "C" {
         bg_col: ImVec4,
         tint_col: ImVec4,
     ) -> bool;
-    pub fn igCheckbox(label: *const c_char, v: *mut bool) -> bool;
-    pub fn igCheckboxFlags(label: *const c_char, flags: *mut c_uint, flags_value: c_uint) -> bool;
-    pub fn igRadioButtonBool(label: *const c_char, active: bool) -> bool;
-    pub fn igRadioButton(label: *const c_char, v: *mut c_int, v_button: c_int) -> bool;
+    pub fn igCheckbox(label: ImStr, v: *mut bool) -> bool;
+    pub fn igCheckboxFlags(label: ImStr, flags: *mut c_uint, flags_value: c_uint) -> bool;
+    pub fn igRadioButtonBool(label: ImStr, active: bool) -> bool;
+    pub fn igRadioButton(label: ImStr, v: *mut c_int, v_button: c_int) -> bool;
     pub fn igCombo(
-        label: *const c_char,
+        label: ImStr,
         current_item: *mut c_int,
-        items: *const *const c_char,
+        items: *const ImStr,
         items_count: c_int,
         height_in_items: c_int,
     ) -> bool;
     pub fn igCombo2(
-        label: *const c_char,
+        label: ImStr,
         current_item: *mut c_int,
         items_separated_by_zeros: *const c_char,
         height_in_items: c_int,
     ) -> bool;
     pub fn igCombo3(
-        label: *const c_char,
+        label: ImStr,
         current_item: *mut c_int,
-        items_getter: extern "C" fn(data: *mut c_void, idx: c_int, out_text: *mut *const c_char)
+        items_getter: extern "C" fn(data: *mut c_void, idx: c_int, out_text: *mut ImStr)
                                     -> bool,
         data: *mut c_void,
         items_count: c_int,
         height_in_items: c_int,
     ) -> bool;
     pub fn igPlotLines(
-        label: *const c_char,
+        label: ImStr,
         values: *const c_float,
         values_count: c_int,
         values_offset: c_int,
-        overlay_text: *const c_char,
+        overlay_text: ImStr,
         scale_min: c_float,
         scale_max: c_float,
         graph_size: ImVec2,
         stride: c_int,
     );
     pub fn igPlotLines2(
-        label: *const c_char,
+        label: ImStr,
         values_getter: extern "C" fn(data: *mut c_void, idx: c_int) -> c_float,
         data: *mut c_void,
         values_count: c_int,
         values_offset: c_int,
-        overlay_text: *const c_char,
+        overlay_text: ImStr,
         scale_min: c_float,
         scale_max: c_float,
         graph_size: ImVec2,
     );
     pub fn igPlotHistogram(
-        label: *const c_char,
+        label: ImStr,
         values: *const c_float,
         values_count: c_int,
         values_offset: c_int,
-        overlay_text: *const c_char,
+        overlay_text: ImStr,
         scale_min: c_float,
         scale_max: c_float,
         graph_size: ImVec2,
         stride: c_int,
     );
     pub fn igPlotHistogram2(
-        label: *const c_char,
+        label: ImStr,
         values_getter: extern "C" fn(data: *mut c_void, idx: c_int) -> c_float,
         data: *mut c_void,
         values_count: c_int,
         values_offset: c_int,
-        overlay_text: *const c_char,
+        overlay_text: ImStr,
         scale_min: c_float,
         scale_max: c_float,
         graph_size: ImVec2,
     );
-    pub fn igProgressBar(fraction: c_float, size_arg: *const ImVec2, overlay: *const c_char);
+    pub fn igProgressBar(fraction: c_float, size_arg: *const ImVec2, overlay: ImStr);
 }
 
 // Widgets: Color Editor/Picker
 extern "C" {
     pub fn igColorEdit3(
-        label: *const c_char,
+        label: ImStr,
         col: *mut c_float,
         flags: ImGuiColorEditFlags,
     ) -> bool;
     pub fn igColorEdit4(
-        label: *const c_char,
+        label: ImStr,
         col: *mut c_float,
         flags: ImGuiColorEditFlags,
     ) -> bool;
     pub fn igColorPicker3(
-        label: *const c_char,
+        label: ImStr,
         col: *mut c_float,
         flags: ImGuiColorEditFlags,
     ) -> bool;
     pub fn igColorPicker4(
-        label: *const c_char,
+        label: ImStr,
         col: *mut c_float,
         flags: ImGuiColorEditFlags,
         ref_col: *const c_float,
     ) -> bool;
     pub fn igColorButton(
-        desc_id: *const c_char,
+        desc_id: ImStr,
         col: ImVec4,
         flags: ImGuiColorEditFlags,
         size: ImVec2,
@@ -1125,100 +1164,100 @@ extern "C" {
 // Widgets: Drags
 extern "C" {
     pub fn igDragFloat(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         v_speed: c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
+        display_format: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igDragFloat2(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         v_speed: c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
+        display_format: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igDragFloat3(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         v_speed: c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
+        display_format: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igDragFloat4(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         v_speed: c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
+        display_format: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igDragFloatRange2(
-        label: *const c_char,
+        label: ImStr,
         v_current_min: *mut c_float,
         v_current_max: *mut c_float,
         v_speed: c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
-        display_format_max: *const c_char,
+        display_format: ImStr,
+        display_format_max: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igDragInt(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         v_speed: c_float,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
+        display_format: ImStr,
     ) -> bool;
     pub fn igDragInt2(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         v_speed: c_float,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
+        display_format: ImStr,
     ) -> bool;
     pub fn igDragInt3(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         v_speed: c_float,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
+        display_format: ImStr,
     ) -> bool;
     pub fn igDragInt4(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         v_speed: c_float,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
+        display_format: ImStr,
     ) -> bool;
     pub fn igDragIntRange2(
-        label: *const c_char,
+        label: ImStr,
         v_current_min: *mut c_int,
         v_current_max: *mut c_int,
         v_speed: c_float,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
-        display_format_max: *const c_char,
+        display_format: ImStr,
+        display_format_max: ImStr,
     ) -> bool;
 }
 
 // Widgets: Input with Keyboard
 extern "C" {
     pub fn igInputText(
-        label: *const c_char,
+        label: ImStr,
         buf: *mut c_char,
         buf_size: usize,
         flags: ImGuiInputTextFlags,
@@ -1226,7 +1265,7 @@ extern "C" {
         user_data: *mut c_void,
     ) -> bool;
     pub fn igInputTextMultiline(
-        label: *const c_char,
+        label: ImStr,
         buf: *mut c_char,
         buf_size: usize,
         size: ImVec2,
@@ -1235,7 +1274,7 @@ extern "C" {
         user_data: *mut c_void,
     ) -> bool;
     pub fn igInputFloat(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         step: c_float,
         step_fast: c_float,
@@ -1243,42 +1282,42 @@ extern "C" {
         extra_flags: ImGuiInputTextFlags,
     ) -> bool;
     pub fn igInputFloat2(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         decimal_precision: c_int,
         extra_flags: ImGuiInputTextFlags,
     ) -> bool;
     pub fn igInputFloat3(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         decimal_precision: c_int,
         extra_flags: ImGuiInputTextFlags,
     ) -> bool;
     pub fn igInputFloat4(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         decimal_precision: c_int,
         extra_flags: ImGuiInputTextFlags,
     ) -> bool;
     pub fn igInputInt(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         step: c_int,
         step_fast: c_int,
         extra_flags: ImGuiInputTextFlags,
     ) -> bool;
     pub fn igInputInt2(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         extra_flags: ImGuiInputTextFlags,
     ) -> bool;
     pub fn igInputInt3(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         extra_flags: ImGuiInputTextFlags,
     ) -> bool;
     pub fn igInputInt4(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         extra_flags: ImGuiInputTextFlags,
     ) -> bool;
@@ -1287,100 +1326,101 @@ extern "C" {
 // Widgets: Sliders
 extern "C" {
     pub fn igSliderFloat(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
+        display_format: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igSliderFloat2(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
+        display_format: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igSliderFloat3(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
+        display_format: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igSliderFloat4(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
+        display_format: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igSliderAngle(
-        label: *const c_char,
+        label: ImStr,
         v_rad: *mut c_float,
         v_degrees_min: c_float,
         v_degrees_max: c_float,
     ) -> bool;
     pub fn igSliderInt(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
+        display_format: ImStr,
     ) -> bool;
     pub fn igSliderInt2(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
+        display_format: ImStr,
     ) -> bool;
     pub fn igSliderInt3(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
+        display_format: ImStr,
     ) -> bool;
     pub fn igSliderInt4(
-        label: *const c_char,
+        label: ImStr,
         v: *mut c_int,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
+        display_format: ImStr,
     ) -> bool;
     pub fn igVSliderFloat(
-        label: *const c_char,
+        label: ImStr,
         size: ImVec2,
         v: *mut c_float,
         v_min: c_float,
         v_max: c_float,
-        display_format: *const c_char,
+        display_format: ImStr,
         power: c_float,
     ) -> bool;
     pub fn igVSliderInt(
-        label: *const c_char,
+        label: ImStr,
         size: ImVec2,
         v: *mut c_int,
         v_min: c_int,
         v_max: c_int,
-        display_format: *const c_char,
+        display_format: ImStr,
     ) -> bool;
 }
 
 // Widgets: Trees
 extern "C" {
-    pub fn igTreeNode(label: *const c_char) -> bool;
-    pub fn igTreeNodeStr(str_id: *const c_char, fmt: *const c_char, ...) -> bool;
+    pub fn igTreeNode(label: ImStr) -> bool;
+    pub fn igTreeNodeStr(str_id: ImStr, fmt: *const c_char, ...) -> bool;
+    pub fn igTreeNodeStr1(str_id: ImStr, text: ImStr) -> bool;
     pub fn igTreeNodePtr(ptr_id: *const c_void, fmt: *const c_char, ...) -> bool;
     // pub fn igTreeNodeStrV(str_id: *const c_char, fmt: *const c_char, args: va_list) -> bool;
     // pub fn igTreeNodePtrV(ptr_id: *const c_void, fmt: *const c_char, args: va_list) -> bool;
-    pub fn igTreeNodeEx(label: *const c_char, flags: ImGuiTreeNodeFlags) -> bool;
+    pub fn igTreeNodeEx(label: ImStr, flags: ImGuiTreeNodeFlags) -> bool;
     pub fn igTreeNodeExStr(
-        str_id: *const c_char,
+        str_id: ImStr,
         flags: ImGuiTreeNodeFlags,
         fmt: *const c_char,
         ...
@@ -1395,15 +1435,14 @@ extern "C" {
     //                      fmt: *const c_char, args: va_list) -> bool;
     // pub fn igTreeNodeExVPtr(ptr_id: *const c_void, flags: ImGuiTreeNodeFlags,
     //                      fmt: *const c_char, args: va_list) -> bool;
-    pub fn igTreePushStr(str_id: *const c_char);
     pub fn igTreePushPtr(ptr_id: *const c_void);
     pub fn igTreePop();
     pub fn igTreeAdvanceToLabelPos();
     pub fn igGetTreeNodeToLabelSpacing() -> c_float;
     pub fn igSetNextTreeNodeOpen(opened: bool, cond: ImGuiCond);
-    pub fn igCollapsingHeader(label: *const c_char, flags: ImGuiTreeNodeFlags) -> bool;
+    pub fn igCollapsingHeader(label: ImStr, flags: ImGuiTreeNodeFlags) -> bool;
     pub fn igCollapsingHeaderEx(
-        label: *const c_char,
+        label: ImStr,
         open: *mut bool,
         flags: ImGuiTreeNodeFlags,
     ) -> bool;
@@ -1412,36 +1451,36 @@ extern "C" {
 // Widgets: Selectable / Lists
 extern "C" {
     pub fn igSelectable(
-        label: *const c_char,
+        label: ImStr,
         selected: bool,
         flags: ImGuiSelectableFlags,
         size: ImVec2,
     ) -> bool;
     pub fn igSelectableEx(
-        label: *const c_char,
+        label: ImStr,
         p_selected: *mut bool,
         flags: ImGuiSelectableFlags,
         size: ImVec2,
     ) -> bool;
     pub fn igListBox(
-        label: *const c_char,
+        label: ImStr,
         current_item: *mut c_int,
-        items: *const *const c_char,
+        items: *const ImStr,
         items_count: c_int,
         height_in_items: c_int,
     ) -> bool;
     pub fn igListBox2(
-        label: *const c_char,
+        label: ImStr,
         current_item: *mut c_int,
-        items_getter: extern "C" fn(data: *mut c_void, idx: c_int, out_text: *mut *const c_char)
+        items_getter: extern "C" fn(data: *mut c_void, idx: c_int, out_text: *mut ImStr)
                                     -> bool,
         data: *mut c_void,
         items_count: c_int,
         height_in_items: c_int,
     ) -> bool;
-    pub fn igListBoxHeader(label: *const c_char, size: ImVec2) -> bool;
+    pub fn igListBoxHeader(label: ImStr, size: ImVec2) -> bool;
     pub fn igListBoxHeader2(
-        label: *const c_char,
+        label: ImStr,
         items_count: c_int,
         height_in_items: c_int,
     ) -> bool;
@@ -1450,10 +1489,10 @@ extern "C" {
 
 // Widgets: Value() Helpers
 extern "C" {
-    pub fn igValueBool(prefix: *const c_char, b: bool);
-    pub fn igValueInt(prefix: *const c_char, v: c_int);
-    pub fn igValueUInt(prefix: *const c_char, v: c_uint);
-    pub fn igValueFloat(prefix: *const c_char, v: c_float, float_format: *const c_char);
+    pub fn igValueBool(prefix: ImStr, b: bool);
+    pub fn igValueInt(prefix: ImStr, v: c_int);
+    pub fn igValueUInt(prefix: ImStr, v: c_uint);
+    pub fn igValueFloat(prefix: ImStr, v: c_float, float_format: ImStr);
 }
 
 // Tooltip
@@ -1470,17 +1509,17 @@ extern "C" {
     pub fn igEndMainMenuBar();
     pub fn igBeginMenuBar() -> bool;
     pub fn igEndMenuBar();
-    pub fn igBeginMenu(label: *const c_char, enabled: bool) -> bool;
+    pub fn igBeginMenu(label: ImStr, enabled: bool) -> bool;
     pub fn igEndMenu();
     pub fn igMenuItem(
-        label: *const c_char,
-        shortcut: *const c_char,
+        label: ImStr,
+        shortcut: ImStr,
         selected: bool,
         enabled: bool,
     ) -> bool;
     pub fn igMenuItemPtr(
-        label: *const c_char,
-        shortcut: *const c_char,
+        label: ImStr,
+        shortcut: ImStr,
         p_selected: *mut bool,
         enabled: bool,
     ) -> bool;
@@ -1488,23 +1527,23 @@ extern "C" {
 
 // Popup
 extern "C" {
-    pub fn igOpenPopup(str_id: *const c_char);
-    pub fn igOpenPopupOnItemClick(str_id: *const c_char, mouse_button: c_int) -> bool;
-    pub fn igBeginPopup(str_id: *const c_char) -> bool;
+    pub fn igOpenPopup(str_id: ImStr);
+    pub fn igOpenPopupOnItemClick(str_id: ImStr, mouse_button: c_int) -> bool;
+    pub fn igBeginPopup(str_id: ImStr) -> bool;
     pub fn igBeginPopupModal(
-        name: *const c_char,
+        name: ImStr,
         open: *mut bool,
         extra_flags: ImGuiWindowFlags,
     ) -> bool;
-    pub fn igBeginPopupContextItem(str_id: *const c_char, mouse_button: c_int) -> bool;
+    pub fn igBeginPopupContextItem(str_id: ImStr, mouse_button: c_int) -> bool;
     pub fn igBeginPopupContextWindow(
-        str_id: *const c_char,
+        str_id: ImStr,
         mouse_button: c_int,
         also_over_items: bool,
     ) -> bool;
-    pub fn igBeginPopupContextVoid(str_id: *const c_char, mouse_button: c_int) -> bool;
+    pub fn igBeginPopupContextVoid(str_id: ImStr, mouse_button: c_int) -> bool;
     pub fn igEndPopup();
-    pub fn igIsPopupOpen(str_id: *const c_char) -> bool;
+    pub fn igIsPopupOpen(str_id: ImStr) -> bool;
     pub fn igCloseCurrentPopup();
 }
 
@@ -1564,8 +1603,7 @@ extern "C" {
     );
     pub fn igCalcTextSize(
         out: *mut ImVec2,
-        text: *const c_char,
-        text_end: *const c_char,
+        text: ImStr,
         hide_text_after_double_hash: bool,
         wrap_width: c_float,
     );
@@ -1658,24 +1696,23 @@ extern "C" {
 // ImGuiIO
 extern "C" {
     pub fn ImGuiIO_AddInputCharacter(c: c_ushort);
-    pub fn ImGuiIO_AddInputCharactersUTF8(utf8_chars: *const c_char);
+    pub fn ImGuiIO_AddInputCharactersUTF8(utf8_chars: ImStr);
     pub fn ImGuiIO_ClearInputCharacters();
 }
 
 // ImGuiTextFilter
 extern "C" {
-    pub fn ImGuiTextFilter_Create(default_filter: *const c_char) -> *mut ImGuiTextFilter;
+    pub fn ImGuiTextFilter_Create(default_filter: ImStr) -> *mut ImGuiTextFilter;
     pub fn ImGuiTextFilter_Destroy(filter: *mut ImGuiTextFilter);
     pub fn ImGuiTextFilter_Clear(filter: *mut ImGuiTextFilter);
     pub fn ImGuiTextFilter_Draw(
         filter: *mut ImGuiTextFilter,
-        label: *const c_char,
+        label: ImStr,
         width: c_float,
     ) -> bool;
     pub fn ImGuiTextFilter_PassFilter(
         filter: *const ImGuiTextFilter,
-        text: *const c_char,
-        text_end: *const c_char,
+        text: ImStr,
     ) -> bool;
     pub fn ImGuiTextFilter_IsActive(filter: *const ImGuiTextFilter) -> bool;
     pub fn ImGuiTextFilter_Build(filter: *const ImGuiTextFilter);
@@ -1758,8 +1795,7 @@ extern "C" {
     pub fn ImGuiTextEditCallbackData_InsertChars(
         data: *mut ImGuiTextEditCallbackData,
         pos: c_int,
-        text: *const c_char,
-        text_end: *const c_char,
+        text: ImStr,
     );
     pub fn ImGuiTextEditCallbackData_HasSelection(data: *mut ImGuiTextEditCallbackData) -> bool;
 }
@@ -1884,8 +1920,7 @@ extern "C" {
         list: *mut ImDrawList,
         pos: ImVec2,
         col: ImU32,
-        text_begin: *const c_char,
-        text_end: *const c_char,
+        text: ImStr,
     );
     pub fn ImDrawList_AddTextExt(
         list: *mut ImDrawList,
@@ -1893,8 +1928,7 @@ extern "C" {
         font_size: c_float,
         pos: ImVec2,
         col: ImU32,
-        text_begin: *const c_char,
-        text_end: *const c_char,
+        text: ImStr,
         wrap_width: c_float,
         cpu_fine_clip_rect: *const ImVec4,
     );
@@ -2142,15 +2176,13 @@ extern "C" {
         size: c_float,
         max_width: c_float,
         wrap_width: c_float,
-        text_begin: *const c_char,
-        text_end: *const c_char,
+        text: ImStr,
         remaining: *mut *const c_char,
     );
     pub fn ImFont_CalcWordWrapPositionA(
         font: *const ImFont,
         scale: c_float,
-        text: *const c_char,
-        text_end: *const c_char,
+        text: ImStr,
         wrap_width: c_float,
     ) -> *const c_char;
     pub fn ImFont_RenderChar(
@@ -2168,8 +2200,7 @@ extern "C" {
         pos: ImVec2,
         col: ImU32,
         clip_rect: *const ImVec4,
-        text_begin: *const c_char,
-        text_end: *const c_char,
+        text: ImStr,
         wrap_width: c_float,
         cpu_fine_clip: bool,
     );
