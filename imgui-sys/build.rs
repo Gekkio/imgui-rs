@@ -49,6 +49,9 @@ fn main() -> io::Result<()> {
             build.define(key, *value);
         }
 
+        #[cfg(feature = "u32_draw_index")]
+        build.define("ImDrawIdx", Some("unsigned int"));
+
         build.flag_if_supported("-Wno-return-type-c-linkage");
         for path in &CPP_FILES {
             assert_file_exists(path)?;
