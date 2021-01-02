@@ -13,23 +13,41 @@ impl GenBindings {
         let bindings = self
             .bindings_path
             .map(PathBuf::from)
-            .unwrap_or_else(|| root.join("imgui-sys/third-party"));
+            .unwrap_or_else(|| root.join("imgui-sys/third-party/cimgui"))
+            .canonicalize()
+            .unwrap();
 
         let output = self
             .output_path
             .map(PathBuf::from)
-            .unwrap_or_else(|| root.join("imgui-sys/src"));
+            .unwrap_or_else(|| root.join("imgui-sys/src"))
+            .canonicalize()
+            .unwrap();
 
         let wasm_name = self
             .wasm_import_name
             .or_else(|| std::env::var("IMGUI_RS_WASM_IMPORT_NAME").ok())
             .unwrap_or_else(|| "imgui-sys-v0".to_string());
-        let types = get_types(&bindings.join("structs_and_enums.json"))?;
-        let funcs = get_definitions(&bindings.join("definitions.json"))?;
+
+        let generator_output_path = bindings.join("generator").join("output").canonicalize()
+			.expect("could not resolve \"cimgui/generator/output/\" path... did you call \"submodule update --init --recursive in imgui-rs folder?");
+
+        let types = get_types(
+            &generator_output_path
+                .join("structs_and_enums.json")
+                .canonicalize()
+                .unwrap(),
+        )?;
+        let funcs = get_definitions(
+            &generator_output_path
+                .join("definitions.json")
+                .canonicalize()
+                .unwrap(),
+        )?;
         let header = bindings.join("cimgui.h");
 
-        generate_binding_file(&header, &output.join("bindings.rs"), &types, &funcs, None)?;
-        generate_binding_file(
+        generate_binding_file_direct(&header, &output.join("bindings.rs"), &types, &funcs, None)?;
+        generate_binding_file_direct(
             &header,
             &output.join("wasm_bindings.rs"),
             &types,
@@ -95,6 +113,7 @@ fn get_definitions(definitions: &Path) -> Result<Vec<String>> {
     Ok(keep_defs)
 }
 
+#[allow(dead_code)]
 fn generate_binding_file(
     header: &Path,
     output: &Path,
@@ -144,6 +163,57 @@ fn generate_binding_file(
         );
     }
     eprintln!("Success [output = {}]", output.display());
+
+    Ok(())
+}
+
+fn generate_binding_file_direct(
+    header: &Path,
+    output: &Path,
+    types: &[String],
+    funcs: &[String],
+    wasm_import_mod: Option<&str>,
+) -> Result<()> {
+    let mut bindgen = bindgen::builder()
+        .size_t_is_usize(true)
+        .prepend_enum_name(false)
+        .generate_comments(false)
+        .layout_tests(false)
+        .derive_default(true)
+        .derive_partialeq(true)
+        .derive_eq(true)
+        .derive_hash(true)
+        .derive_debug(true)
+        .use_core()
+        .blacklist_type("__darwin_size_t")
+        .raw_line("#![allow(nonstandard_style, clippy::all)]")
+        .ctypes_prefix("cty");
+
+    if let Some(name) = wasm_import_mod {
+        bindgen = bindgen.wasm_import_module_name(name);
+    }
+
+    for t in types {
+        bindgen = bindgen.whitelist_type(t);
+    }
+
+    for f in funcs {
+        bindgen = bindgen.whitelist_function(f);
+    }
+    eprintln!("{}", header.canonicalize().unwrap().to_str().unwrap());
+    let bindgen = bindgen
+        .clang_args(&["-DCIMGUI_DEFINE_ENUMS_AND_STRUCTS=1"])
+        .header(header.canonicalize().unwrap().to_str().unwrap());
+
+    eprintln!("Executing bindgen [output = {}]", output.display());
+
+    let bindings = bindgen
+        .generate()
+        .expect("Failed to run function \"generate\" on bindgen");
+
+    bindings
+        .write_to_file(output)
+        .unwrap_or_else(|_| panic!("could not write to file: {}", output.display()));
 
     Ok(())
 }
