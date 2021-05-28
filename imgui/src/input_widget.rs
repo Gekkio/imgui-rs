@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use std::os::raw::{c_int, c_void};
 use std::ptr;
 
+use crate::internal::DataTypeKind;
 use crate::sys;
 use crate::{ImStr, ImString, Ui};
 
@@ -176,7 +177,7 @@ macro_rules! impl_format_params {
         /// Sets the display format using *a C-style printf string*
         #[inline]
         pub fn display_format(mut self, display_format: &'p ImStr) -> Self {
-            self.display_format = display_format;
+            self.display_format = Some(display_format);
             self
         }
     };
@@ -338,6 +339,91 @@ impl<'ui, 'p> InputTextMultiline<'ui, 'p> {
 }
 
 #[must_use]
+pub struct InputScalar<'ui, 'p, T: DataTypeKind> {
+    label: &'p ImStr,
+    step: Option<T>,
+    step_fast: Option<T>,
+    flags: InputTextFlags,
+    display_format: Option<&'p ImStr>,
+    _phantom: PhantomData<&'ui Ui<'ui>>,
+}
+
+impl<'ui, 'p, T: DataTypeKind> InputScalar<'ui, 'p, T> {
+    pub fn new(_: &Ui<'ui>, label: &'p ImStr) -> Self {
+        InputScalar {
+            label,
+            step: None,
+            step_fast: None,
+            flags: InputTextFlags::empty(),
+            display_format: None,
+            _phantom: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub fn step(mut self, value: T) -> Self {
+        self.step = Some(value);
+        self
+    }
+
+    #[inline]
+    pub fn step_fast(mut self, value: T) -> Self {
+        self.step_fast = Some(value);
+        self
+    }
+
+    pub fn build(self, value: &mut T) -> bool {
+        unsafe {
+            sys::igInputScalar(
+                self.label.as_ptr(),
+                T::KIND as i32,
+                value as *mut T as *mut c_void,
+                self.step
+                    .as_ref()
+                    .map(|step| step as *const T)
+                    .unwrap_or(ptr::null()) as *const c_void,
+                self.step_fast
+                    .as_ref()
+                    .map(|step| step as *const T)
+                    .unwrap_or(ptr::null()) as *const c_void,
+                self.display_format
+                    .map(ImStr::as_ptr)
+                    .unwrap_or(ptr::null()),
+                self.flags.bits() as i32,
+            )
+        }
+    }
+
+    /// Builds a horizontal array of multiple drag sliders attached to the given slice.
+    ///
+    /// Returns true if any slider value was changed.
+    pub fn build_array(self, values: &mut [T]) -> bool {
+        unsafe {
+            sys::igInputScalarN(
+                self.label.as_ptr(),
+                T::KIND as i32,
+                values.as_mut_ptr() as *mut c_void,
+                values.len() as i32,
+                self.step
+                    .as_ref()
+                    .map(|step| step as *const T)
+                    .unwrap_or(ptr::null()) as *const c_void,
+                self.step_fast
+                    .as_ref()
+                    .map(|step| step as *const T)
+                    .unwrap_or(ptr::null()) as *const c_void,
+                self.display_format
+                    .map(ImStr::as_ptr)
+                    .unwrap_or(ptr::null()),
+                self.flags.bits() as i32,
+            )
+        }
+    }
+
+    impl_format_params!(InputScalar);
+    impl_text_flags!(InputScalar);
+}
+#[must_use]
 pub struct InputInt<'ui, 'p> {
     label: &'p ImStr,
     value: &'p mut i32,
@@ -382,7 +468,7 @@ pub struct InputFloat<'ui, 'p> {
     step: f32,
     step_fast: f32,
     flags: InputTextFlags,
-    display_format: &'p ImStr,
+    display_format: Option<&'p ImStr>,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
@@ -394,7 +480,7 @@ impl<'ui, 'p> InputFloat<'ui, 'p> {
             step: 0.0,
             step_fast: 0.0,
             flags: InputTextFlags::empty(),
-            display_format: im_str!("%.3f"),
+            display_format: None,
             _phantom: PhantomData,
         }
     }
@@ -406,7 +492,9 @@ impl<'ui, 'p> InputFloat<'ui, 'p> {
                 self.value as *mut f32,
                 self.step,
                 self.step_fast,
-                self.display_format.as_ptr() as *const _,
+                self.display_format
+                    .map(ImStr::as_ptr)
+                    .unwrap_or(ptr::null()),
                 self.flags.bits() as i32,
             )
         }
@@ -424,7 +512,7 @@ macro_rules! impl_input_floatn {
             label: &'p ImStr,
             value: &'p mut [f32; $N],
             flags: InputTextFlags,
-            display_format: &'p ImStr,
+            display_format: Option<&'p ImStr>,
             _phantom: PhantomData<&'ui Ui<'ui>>,
         }
 
@@ -434,7 +522,7 @@ macro_rules! impl_input_floatn {
                     label,
                     value,
                     flags: InputTextFlags::empty(),
-                    display_format: im_str!("%.3f"),
+                    display_format: None,
                     _phantom: PhantomData,
                 }
             }
@@ -444,7 +532,9 @@ macro_rules! impl_input_floatn {
                     sys::$igInputFloatN(
                         self.label.as_ptr(),
                         self.value.as_mut_ptr(),
-                        self.display_format.as_ptr() as *const _,
+                        self.display_format
+                            .map(ImStr::as_ptr)
+                            .unwrap_or(ptr::null()),
                         self.flags.bits() as i32,
                     )
                 }
@@ -467,7 +557,7 @@ pub struct InputDouble<'ui, 'p> {
     step: f64,
     step_fast: f64,
     flags: InputTextFlags,
-    display_format: &'p ImStr,
+    display_format: Option<&'p ImStr>,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
@@ -476,10 +566,10 @@ impl<'ui, 'p> InputDouble<'ui, 'p> {
         InputDouble {
             label,
             value,
-            step: 0.0,
-            step_fast: 0.0,
+            step: 1.0,
+            step_fast: 100.0,
             flags: InputTextFlags::empty(),
-            display_format: im_str!("%.3f"),
+            display_format: None,
             _phantom: PhantomData,
         }
     }
@@ -491,7 +581,9 @@ impl<'ui, 'p> InputDouble<'ui, 'p> {
                 self.value as *mut f64,
                 self.step,
                 self.step_fast,
-                self.display_format.as_ptr() as *const _,
+                self.display_format
+                    .map(ImStr::as_ptr)
+                    .unwrap_or(ptr::null()),
                 self.flags.bits() as i32,
             )
         }

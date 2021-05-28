@@ -21,7 +21,7 @@ pub use self::input::keyboard::*;
 pub use self::input::mouse::*;
 pub use self::input_widget::{
     InputDouble, InputFloat, InputFloat2, InputFloat3, InputFloat4, InputInt, InputInt2, InputInt3,
-    InputInt4, InputText, InputTextMultiline,
+    InputInt4, InputScalar, InputText, InputTextMultiline,
 };
 pub use self::io::*;
 pub use self::layout::*;
@@ -48,7 +48,7 @@ pub use self::widget::tab::*;
 pub use self::widget::tree::*;
 pub use self::window::child_window::*;
 pub use self::window::*;
-use internal::RawCast;
+use internal::{DataTypeKind, RawCast};
 
 #[macro_use]
 mod string;
@@ -295,6 +295,10 @@ impl<'ui> Ui<'ui> {
     #[doc(alias = "InputDouble")]
     pub fn input_double<'p>(&self, label: &'p ImStr, value: &'p mut f64) -> InputDouble<'ui, 'p> {
         InputDouble::new(self, label, value)
+    }
+    #[doc(alias = "InputScalar")]
+    pub fn input_scalar<'p, T: DataTypeKind>(&self, label: &'p ImStr) -> InputScalar<'ui, 'p, T> {
+        InputScalar::new(self, label)
     }
     #[doc(alias = "InputInt")]
     pub fn input_int<'p>(&self, label: &'p ImStr, value: &'p mut i32) -> InputInt<'ui, 'p> {
