@@ -171,6 +171,17 @@ macro_rules! impl_text_flags {
     };
 }
 
+macro_rules! impl_format_params {
+    ($InputType:ident) => {
+        /// Sets the display format using *a C-style printf string*
+        #[inline]
+        pub fn display_format(mut self, display_format: &'p ImStr) -> Self {
+            self.display_format = display_format;
+            self
+        }
+    };
+}
+
 macro_rules! impl_step_params {
     ($InputType:ident, $Value:ty) => {
         #[inline]
@@ -371,6 +382,7 @@ pub struct InputFloat<'ui, 'p> {
     step: f32,
     step_fast: f32,
     flags: InputTextFlags,
+    display_format: &'p ImStr,
     _phantom: PhantomData<&'ui Ui<'ui>>,
 }
 
@@ -382,6 +394,7 @@ impl<'ui, 'p> InputFloat<'ui, 'p> {
             step: 0.0,
             step_fast: 0.0,
             flags: InputTextFlags::empty(),
+            display_format: im_str!("%.3f"),
             _phantom: PhantomData,
         }
     }
@@ -393,12 +406,13 @@ impl<'ui, 'p> InputFloat<'ui, 'p> {
                 self.value as *mut f32,
                 self.step,
                 self.step_fast,
-                b"%.3f\0".as_ptr() as *const _,
+                self.display_format.as_ptr() as *const _,
                 self.flags.bits() as i32,
             )
         }
     }
 
+    impl_format_params!(InputFloat);
     impl_step_params!(InputFloat, f32);
     impl_text_flags!(InputFloat);
 }
@@ -410,6 +424,7 @@ macro_rules! impl_input_floatn {
             label: &'p ImStr,
             value: &'p mut [f32; $N],
             flags: InputTextFlags,
+            display_format: &'p ImStr,
             _phantom: PhantomData<&'ui Ui<'ui>>,
         }
 
@@ -419,6 +434,7 @@ macro_rules! impl_input_floatn {
                     label,
                     value,
                     flags: InputTextFlags::empty(),
+                    display_format: im_str!("%.3f"),
                     _phantom: PhantomData,
                 }
             }
@@ -428,12 +444,13 @@ macro_rules! impl_input_floatn {
                     sys::$igInputFloatN(
                         self.label.as_ptr(),
                         self.value.as_mut_ptr(),
-                        b"%.3f\0".as_ptr() as *const _,
+                        self.display_format.as_ptr() as *const _,
                         self.flags.bits() as i32,
                     )
                 }
             }
 
+            impl_format_params!($InputFloatN);
             impl_text_flags!($InputFloatN);
         }
     };
@@ -442,6 +459,48 @@ macro_rules! impl_input_floatn {
 impl_input_floatn!(InputFloat2, 2, igInputFloat2);
 impl_input_floatn!(InputFloat3, 3, igInputFloat3);
 impl_input_floatn!(InputFloat4, 4, igInputFloat4);
+
+#[must_use]
+pub struct InputDouble<'ui, 'p> {
+    label: &'p ImStr,
+    value: &'p mut f64,
+    step: f64,
+    step_fast: f64,
+    flags: InputTextFlags,
+    display_format: &'p ImStr,
+    _phantom: PhantomData<&'ui Ui<'ui>>,
+}
+
+impl<'ui, 'p> InputDouble<'ui, 'p> {
+    pub fn new(_: &Ui<'ui>, label: &'p ImStr, value: &'p mut f64) -> Self {
+        InputDouble {
+            label,
+            value,
+            step: 0.0,
+            step_fast: 0.0,
+            flags: InputTextFlags::empty(),
+            display_format: im_str!("%.3f"),
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn build(self) -> bool {
+        unsafe {
+            sys::igInputDouble(
+                self.label.as_ptr(),
+                self.value as *mut f64,
+                self.step,
+                self.step_fast,
+                self.display_format.as_ptr() as *const _,
+                self.flags.bits() as i32,
+            )
+        }
+    }
+
+    impl_format_params!(InputDouble);
+    impl_step_params!(InputDouble, f64);
+    impl_text_flags!(InputDouble);
+}
 
 macro_rules! impl_input_intn {
     ($InputIntN:ident, $N:expr, $igInputIntN:ident) => {
