@@ -566,7 +566,7 @@ fn show_test_window(ui: &Ui, state: &mut State, opened: &mut bool) {
                 .step(0.1)
                 .step_fast(1.0)
                 .build(&mut state.d0);
-                ui.input_scalar(im_str!("input scalar double3"))
+            ui.input_scalar(im_str!("input scalar double3"))
                 .step(0.1)
                 .step_fast(1.0)
                 .build_array(&mut state.vec3d);
