@@ -47,7 +47,7 @@
             - If you're using `DEP_IMGUI_DEFINE_`s for this already, then no change is needed.
         - If you're using `.cargo/config` to apply a build script override and link against a prebuilt `Dear Imgui` (or something else along these lines), you need to ensure you link with a version that was built using `-DIMGUI_USE_WCHAR32`.
 
-- Add `InputDouble` and allow setting the format string for it and `InputFloat`.
+- Add `InputDouble` and `InputScalar` and allow setting the format string for `InputFloat`.
 
 ## [0.7.0] - 2021-02-04
 
