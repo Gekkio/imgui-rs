@@ -34,7 +34,9 @@ struct State {
     text_multiline: ImString,
     i0: i32,
     f0: f32,
+    d0: f64,
     vec2f: [f32; 2],
+    vec3d: [f64; 3],
     vec3f: [f32; 3],
     vec2i: [i32; 2],
     vec3i: [i32; 3],
@@ -96,8 +98,10 @@ impl Default for State {
             text_multiline,
             i0: 123,
             f0: 0.001,
+            d0: 0.000001,
             vec2f: [0.10, 0.20],
             vec3f: [0.10, 0.20, 0.30],
+            vec3d: [0.10, 0.20, 0.30],
             vec2i: [10, 20],
             vec3i: [10, 20, 30],
             col1: [1.0, 0.0, 0.2],
@@ -545,6 +549,27 @@ fn show_test_window(ui: &Ui, state: &mut State, opened: &mut bool) {
                 .step(0.01)
                 .step_fast(1.0)
                 .build();
+            ui.input_double(im_str!("input double"), &mut state.d0)
+                .step(0.01)
+                .step_fast(1.0)
+                .display_format(im_str!("%.6f"))
+                .build();
+            ui.input_scalar(im_str!("input scalar int"))
+                .step(1)
+                .step_fast(10)
+                .build(&mut state.i0);
+            ui.input_scalar(im_str!("input scalar int3"))
+                .step(1)
+                .step_fast(10)
+                .build_array(&mut state.vec3i);
+            ui.input_scalar(im_str!("input scalar double"))
+                .step(0.1)
+                .step_fast(1.0)
+                .build(&mut state.d0);
+            ui.input_scalar(im_str!("input scalar double3"))
+                .step(0.1)
+                .step_fast(1.0)
+                .build_array(&mut state.vec3d);
             Drag::new(im_str!("drag float")).range(-1.0..=1.0).speed(0.001).build(ui, &mut state.f0);
             ui.input_float3(im_str!("input float3"), &mut state.vec3f)
                 .build();
